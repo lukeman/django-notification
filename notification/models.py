@@ -29,14 +29,26 @@ from notification.message import encode_message
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
 
+NOTIFICATION_BACKENDS = backends.load_backends()
+
+NOTICE_MEDIA = []
+NOTICE_MEDIA_DEFAULTS = {}
+for key, backend in NOTIFICATION_BACKENDS.items():
+    # key is a tuple (medium_id, backend_label)
+    NOTICE_MEDIA.append(key)
+    NOTICE_MEDIA_DEFAULTS[key[0]] = backend.spam_sensitivity
+
+
 class LanguageStoreNotAvailable(Exception):
     pass
+
 
 class NoticeType(models.Model):
 
     label = models.CharField(_('label'), max_length=40)
     display = models.CharField(_('display'), max_length=50)
     description = models.CharField(_('description'), max_length=100)
+    default_medium = models.CharField(_('medium'), max_length=1, choices=NOTICE_MEDIA)
 
     # by default only on for media with sensitivity less than or equal to this number
     default = models.IntegerField(_('default'))
@@ -48,14 +60,6 @@ class NoticeType(models.Model):
         verbose_name = _("notice type")
         verbose_name_plural = _("notice types")
 
-NOTIFICATION_BACKENDS = backends.load_backends()
-
-NOTICE_MEDIA = []
-NOTICE_MEDIA_DEFAULTS = {}
-for key, backend in NOTIFICATION_BACKENDS.items():
-    # key is a tuple (medium_id, backend_label)
-    NOTICE_MEDIA.append(key)
-    NOTICE_MEDIA_DEFAULTS[key[0]] = backend.spam_sensitivity
 
 class NoticeSetting(models.Model):
     """
@@ -117,6 +121,7 @@ class NoticeManager(models.Manager):
         """
         return self.filter(user=user, unseen=True).count()
 
+
 class Notice(models.Model):
 
     user = models.ForeignKey(User, verbose_name=_('user'))
@@ -157,6 +162,7 @@ class Notice(models.Model):
     @models.permalink
     def get_absolute_url(self):
         return ("notification_notice", [str(self.pk)])
+
 
 class NoticeQueueBatch(models.Model):
     """
